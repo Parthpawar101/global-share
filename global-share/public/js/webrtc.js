@@ -19,7 +19,12 @@ class WebRTCManager {
       this.app.transfer.configure(config);
       const servers = [{ urls: config.stunUrl }];
       // Static TURN credentials are server-side only. A production TURN REST endpoint must supply short-lived credentials.
-      if (config.turnUrl) servers.push({ urls: config.turnUrl });
+      if (config.turnUrl) {
+        const turnServer = { urls: config.turnUrl };
+        if (config.turnUsername) turnServer.username = config.turnUsername;
+        if (config.turnCredential) turnServer.credential = config.turnCredential;
+        servers.push(turnServer);
+      }
       this.config.iceServers = servers;
     }
   }

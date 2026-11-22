@@ -20,7 +20,8 @@ app.get('/api/config', (_req, res) => {
   res.json({
     stunUrl: process.env.STUN_URL || 'stun:stun.l.google.com:19302',
     turnUrl: process.env.TURN_URL || '',
-    turnConfigured: Boolean(process.env.TURN_URL),
+    turnUsername: process.env.TURN_USERNAME || '',
+    turnCredential: process.env.TURN_CREDENTIAL || '',
     chunkSize: Number(process.env.FILE_CHUNK_SIZE || 16384),
     maxFileSize: Number(process.env.MAX_FILE_SIZE || 2147483648)
   });
