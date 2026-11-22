@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: global-share
+    runtime: node
+    plan: free
+    rootDir: global-share
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
