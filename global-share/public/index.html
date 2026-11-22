@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#09090b">
+  <title>Global Share — Share Anything Anywhere</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="ambient one"></div><div class="ambient two"></div>
+  <header class="topbar">
+    <button class="brand" id="brandButton" aria-label="Go to home">
+      <span class="brand-mark"><i data-lucide="orbit"></i></span>
+      <span>GLOBAL SHARE</span>
+    </button>
+    <button class="icon-button" id="themeButton" aria-label="Toggle theme"><i data-lucide="sun"></i></button>
+  </header>
+
+  <main>
+    <section id="homeView" class="view home-view">
+      <div class="hero">
+        <div class="eyebrow"><span></span> PRIVATE PEER-TO-PEER</div>
+        <h1>GLOBAL <span>SHARE</span></h1>
+        <p class="tagline">Share anything. Anywhere. Instantly.</p>
+        <p class="subtext">No account. No login. Just connect and share.</p>
+      </div>
+
+      <div class="action-grid">
+        <article class="action-card create-card">
+          <div class="card-icon purple"><i data-lucide="radio-tower"></i></div>
+          <div><span class="card-kicker">START A SESSION</span><h2>Create Room</h2><p>Generate a secure room for one person to join.</p></div>
+          <button class="primary-button" id="createRoomButton">Create room <i data-lucide="arrow-right"></i></button>
+        </article>
+        <article class="action-card join-card">
+          <div class="card-icon cyan"><i data-lucide="users"></i></div>
+          <div><span class="card-kicker">HAVE A CODE?</span><h2>Join Room</h2><p>Enter a six-digit code or scan a room QR.</p></div>
+          <div class="code-input-row">
+            <input id="joinCodeInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="Six-digit room code">
+            <button class="primary-button join-button" id="joinRoomButton" aria-label="Join room"><i data-lucide="arrow-right"></i></button>
+          </div>
+          <button class="scan-button" id="scanButton"><i data-lucide="scan-line"></i> Scan QR code</button>
+        </article>
+      </div>
+    </section>
+
+    <section id="roomView" class="view room-view hidden">
+      <div class="room-toolbar">
+        <div class="connection-status"><span class="status-dot" id="statusDot"></span><span id="connectionStatus">Waiting for peer</span></div>
+        <button class="danger-button" id="disconnectButton"><i data-lucide="log-out"></i> Disconnect</button>
+      </div>
+
+      <div id="lobbyPanel" class="lobby-panel">
+        <div class="lobby-main">
+          <div class="waiting-orbit"><div class="orbit-ring"></div><i data-lucide="radio-tower"></i></div>
+          <span class="card-kicker">ROOM CODE</span>
+          <h2 id="roomCode">------</h2>
+          <p>Waiting for a peer to connect</p>
+        </div>
+        <div class="qr-panel">
+          <img id="qrImage" alt="Room QR code">
+          <button class="secondary-button" id="copyLinkButton"><i data-lucide="link"></i> Copy link</button>
+          <button class="text-button" id="downloadQrButton"><i data-lucide="download"></i> Save QR</button>
+        </div>
+      </div>
+
+      <div id="dashboard" class="dashboard hidden">
+        <div class="devices-grid">
+          <article class="device-card">
+            <div class="device-avatar"><i data-lucide="monitor"></i></div>
+            <div><span>You</span><strong id="localDeviceName">This device</strong><small id="localDeviceType">Desktop</small></div>
+            <span class="live-badge">Connected</span>
+          </article>
+          <article class="device-card">
+            <div class="device-avatar peer"><i data-lucide="smartphone"></i></div>
+            <div><span>Peer</span><strong id="peerDeviceName">Waiting…</strong><small id="peerDeviceType">Device</small></div>
+            <span class="live-badge" id="peerBadge">Waiting</span>
+          </article>
+        </div>
+
+        <div class="workspace-grid">
+          <section class="panel file-panel">
+            <div class="panel-header"><div><span class="card-kicker">TRANSFER</span><h2>Send files</h2></div><button class="icon-button small" id="clearTransfersButton" title="Clear history"><i data-lucide="trash-2"></i></button></div>
+            <div id="dropZone" class="drop-zone">
+              <input id="fileInput" type="file" multiple hidden>
+              <div class="upload-icon"><i data-lucide="cloud-upload"></i></div>
+              <strong>Drop files here</strong><span>or <button id="browseButton">browse</button></span>
+              <small>Up to 2 GB per file</small>
+            </div>
+            <div id="transferList" class="transfer-list"></div>
+          </section>
+
+          <section class="panel text-panel">
+            <div class="panel-header"><div><span class="card-kicker">CLIPBOARD</span><h2>Shared text</h2></div><button class="icon-button small" id="pasteButton" title="Paste from clipboard"><i data-lucide="clipboard"></i></button></div>
+            <div id="messageList" class="message-list"><div class="empty-state">Send a message or pasted text</div></div>
+            <div class="composer">
+              <textarea id="textInput" rows="3" placeholder="Type or paste text…"></textarea>
+              <button class="send-button" id="sendTextButton" aria-label="Send text"><i data-lucide="send"></i></button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="qrModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="QR scanner">
+    <div class="modal-card">
+      <div class="modal-header"><h2>Scan room QR</h2><button class="icon-button" id="closeQrButton"><i data-lucide="x"></i></button></div>
+      <div id="qrReader"></div><p id="qrStatus">Allow camera access to scan.</p>
+    </div>
+  </div>
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="/js/clipboard.js"></script>
+  <script src="/js/transfer.js"></script>
+  <script src="/js/webrtc.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
