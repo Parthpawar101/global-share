@@ -7,6 +7,7 @@ class WebRTCManager {
     this.initiator = false;
     this.peerSocketId = null;
     this.negotiating = false;
+    this.iceRecoveryTimer = null;
     this.config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     this.bindSocket();
   }
@@ -62,7 +63,12 @@ class WebRTCManager {
     this.socket.on('disconnect', reason => {
       if (reason !== 'io client disconnect') this.app.setConnectionStatus('error', 'Signaling reconnecting…');
     });
-    this.socket.on('connect', () => this.app.toast('Signaling reconnected.', 'success'));
+    this.socket.on('connect', () => {
+      if (this.app.room?.roomId) {
+        this.joinRoom(this.app.room.roomId, this.app.room.secret, this.app.room.joinToken);
+        this.app.toast('Signaling reconnected.', 'success');
+      }
+    });
   }
 
   ensurePeerConnection() {
@@ -70,9 +76,24 @@ class WebRTCManager {
     this.pc = new RTCPeerConnection(this.config);
     this.pc.oniceconnectionstatechange = () => {
       const state = this.pc.iceConnectionState;
-      if (state === 'connected' || state === 'completed') this.app.setConnectionStatus('connected', 'P2P connected');
-      else if (state === 'disconnected') this.app.setConnectionStatus('waiting', 'Peer connection lost');
-      else if (state === 'failed') this.app.setConnectionStatus('error', 'Connection failed — a TURN server may be required');
+      if (state === 'connected' || state === 'completed') {
+        if (this.iceRecoveryTimer) clearTimeout(this.iceRecoveryTimer);
+        this.iceRecoveryTimer = null;
+        this.app.setConnectionStatus('connected', 'P2P connected');
+      } else if (state === 'disconnected') {
+        this.app.setConnectionStatus('waiting', 'Peer connection interrupted — recovering…');
+        if (!this.iceRecoveryTimer) {
+          this.iceRecoveryTimer = setTimeout(() => {
+            if (this.pc?.iceConnectionState === 'disconnected') {
+              try { this.pc.restartIce(); } catch {}
+              if (this.initiator) this.createOffer();
+            }
+          }, 5000);
+        }
+      } else if (state === 'failed') {
+        if (this.iceRecoveryTimer) clearTimeout(this.iceRecoveryTimer);
+        this.app.setConnectionStatus('error', 'Connection failed — a TURN server may be required');
+      }
     };
     this.pc.onicecandidate = event => {
       if (event.candidate) this.sendSignal({ candidate: event.candidate });
@@ -93,6 +114,7 @@ class WebRTCManager {
       await this.pc.setLocalDescription(offer);
       this.sendSignal({ description: this.pc.localDescription });
     } catch (error) { this.app.setConnectionStatus('error', 'Could not create connection'); }
+    finally { this.negotiating = false; }
   }
 
   createTextChannel() {
